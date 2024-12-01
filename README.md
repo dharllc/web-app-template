@@ -1,6 +1,4 @@
-# Speech-to-Task Application
-
-A modern web application that converts speech input into actionable tasks, built with React (TypeScript) frontend and Python FastAPI backend.
+# A Generic Template for Web Apps
 
 ## Architecture Overview
 
@@ -103,7 +101,3 @@ npm start
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
-
-## License
-
-[Your License Here]
