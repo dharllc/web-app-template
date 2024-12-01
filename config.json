@@ -1,0 +1,6 @@
+{
+    "ports": {
+      "frontend": 3051,
+      "backend": 8051
+    }
+  }
