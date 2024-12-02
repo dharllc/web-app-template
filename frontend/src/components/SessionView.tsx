@@ -2,13 +2,17 @@
 import React, { useEffect, useState } from 'react';
 import { useTheme, theme } from '../theme/ThemeContext';
 import { Session } from '../types/session';
+import { useParams, useNavigate } from 'react-router-dom';
 
 interface SessionViewProps {
-  sessionId: string | null;
-  onSessionCreated?: (session: Session) => void;
+  sessionId?: string | null;
 }
 
-const SessionView: React.FC<SessionViewProps> = ({ sessionId, onSessionCreated }) => {
+const SessionView: React.FC<SessionViewProps> = ({ sessionId: propSessionId }) => {
+  const { sessionId: routeSessionId } = useParams();
+  const navigate = useNavigate();
+  const sessionId = propSessionId ?? routeSessionId ?? null;
+  
   const { isDark } = useTheme();
   const currentTheme = isDark ? theme.dark : theme.light;
   const [session, setSession] = useState<Session | null>(null);
@@ -35,13 +39,18 @@ const SessionView: React.FC<SessionViewProps> = ({ sessionId, onSessionCreated }
         setIsEditing(false);
       } catch (error) {
         console.error('Error fetching session:', error);
+        navigate('/');  // Redirect to home on error
       } finally {
         setLoading(false);
       }
     };
 
     fetchSession();
-  }, [sessionId]);
+  }, [sessionId, navigate]);
+
+  const handleSessionCreated = async (newSession: Session) => {
+    navigate(`/sessions/${newSession.id}`);
+  };
 
   const createSession = async () => {
     if (title.trim()) {
@@ -58,7 +67,7 @@ const SessionView: React.FC<SessionViewProps> = ({ sessionId, onSessionCreated }
         const newSession = await response.json();
         setSession(newSession);
         setIsEditing(false);
-        onSessionCreated?.(newSession);
+        handleSessionCreated(newSession);
       } catch (error) {
         console.error('Error creating session:', error);
       }

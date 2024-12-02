@@ -1,27 +1,28 @@
 // File: frontend/src/App.tsx
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import './App.css';
 import ConfigStatus from './components/ConfigStatus';
 import Sidebar from './components/Sidebar';
-import SessionView from './components/SessionView';
 import DarkModeToggle from './components/DarkModeToggle';
 import { ThemeProvider, useTheme, theme } from './theme/ThemeContext';
-import { Session } from './types/session';
+import { Outlet, useNavigate } from 'react-router-dom';
 
 const AppContent: React.FC = () => {
   const { isDark } = useTheme();
   const currentTheme = isDark ? theme.dark : theme.light;
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const navigate = useNavigate();
 
-  const handleSessionCreated = useCallback((session: Session) => {
-    setActiveSessionId(session.id);
-    setRefreshTrigger(prev => prev + 1); // Trigger sidebar refresh
-  }, []);
+  const handleNewSession = () => {
+    navigate('/');
+  };
 
-  const handleNewSession = useCallback(() => {
-    setActiveSessionId(null);
-  }, []);
+  const handleSessionSelect = (sessionId: string | null) => {
+    if (sessionId) {
+      navigate(`/sessions/${sessionId}`);
+    } else {
+      navigate('/');
+    }
+  };
 
   return (
     <div className="App" style={{ 
@@ -44,15 +45,11 @@ const AppContent: React.FC = () => {
       </header>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar 
-          onSessionSelect={setActiveSessionId} 
+          onSessionSelect={handleSessionSelect} 
           onNewSession={handleNewSession}
-          refreshTrigger={refreshTrigger}
         />
         <main style={{ flex: 1, overflow: 'auto' }}>
-          <SessionView 
-            sessionId={activeSessionId} 
-            onSessionCreated={handleSessionCreated}
-          />
+          <Outlet />
         </main>
       </div>
       <ConfigStatus />
