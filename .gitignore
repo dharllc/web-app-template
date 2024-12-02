@@ -41,3 +41,7 @@ yarn-error.log*
 coverage/
 dist/
 tmp/
+
+
+# Session data
+/backend/sessions/
