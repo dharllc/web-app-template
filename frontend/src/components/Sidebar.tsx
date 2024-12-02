@@ -4,15 +4,19 @@ import { useTheme, theme } from '../theme/ThemeContext';
 import { Session } from '../types/session';
 
 interface SidebarProps {
-  onSessionSelect?: (sessionId: string) => void;
+  onSessionSelect?: (sessionId: string | null) => void;
+  onNewSession?: () => void;
+  refreshTrigger?: number;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect, onNewSession, refreshTrigger }) => {
   const { isDark } = useTheme();
   const currentTheme = isDark ? theme.dark : theme.light;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
+  const [isNewButtonHovered, setIsNewButtonHovered] = useState(false);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -28,11 +32,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect }) => {
     };
 
     fetchSessions();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleSessionClick = (sessionId: string) => {
     setActiveSessionId(sessionId);
     onSessionSelect?.(sessionId);
+  };
+
+  const handleNewSession = () => {
+    setActiveSessionId(null);
+    onSessionSelect?.(null);
+    onNewSession?.();
   };
 
   return (
@@ -52,15 +62,18 @@ const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect }) => {
           style={{
             width: '100%',
             padding: '10px',
-            background: currentTheme.primary,
+            background: isNewButtonHovered ? currentTheme.primaryHover : currentTheme.primary,
             color: '#fff',
             border: 'none',
             borderRadius: '6px',
             cursor: 'pointer',
             fontWeight: '500',
-            fontSize: '14px'
+            fontSize: '14px',
+            transition: 'background 0.2s'
           }}
-          onClick={() => console.log('New Session')}
+          onClick={handleNewSession}
+          onMouseEnter={() => setIsNewButtonHovered(true)}
+          onMouseLeave={() => setIsNewButtonHovered(false)}
         >
           New Session
         </button>
@@ -79,6 +92,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect }) => {
           }}>
             Loading sessions...
           </div>
+        ) : sessions.length === 0 ? (
+          <div style={{ 
+            padding: '20px', 
+            color: currentTheme.textSecondary,
+            textAlign: 'center' 
+          }}>
+            No sessions yet
+          </div>
         ) : (
           sessions.map(session => (
             <div
@@ -87,7 +108,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect }) => {
                 padding: '12px',
                 marginBottom: '8px',
                 borderRadius: '6px',
-                background: activeSessionId === session.id ? currentTheme.surfaceHover : currentTheme.surface,
+                background: activeSessionId === session.id || hoveredSessionId === session.id 
+                  ? currentTheme.surfaceHover 
+                  : currentTheme.surface,
                 cursor: 'pointer',
                 transition: 'background 0.2s',
                 display: 'flex',
@@ -95,6 +118,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onSessionSelect }) => {
                 gap: '4px'
               }}
               onClick={() => handleSessionClick(session.id)}
+              onMouseEnter={() => setHoveredSessionId(session.id)}
+              onMouseLeave={() => setHoveredSessionId(null)}
             >
               <div style={{
                 fontSize: '14px',

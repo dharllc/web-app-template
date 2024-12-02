@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
+import uuid
 
 # Load shared config
 config_path = Path(__file__).parent.parent / 'config.json'
@@ -25,11 +26,13 @@ class Settings(BaseSettings):
     backend_port: int = config['ports']['backend']
     frontend_url: str = f"http://localhost:{config['ports']['frontend']}"
     sessions_dir: Path = Path(__file__).parent / "sessions"
+    templates_dir: Path = Path(__file__).parent / "templates"
 
 settings = Settings()
 
-# Create sessions directory if it doesn't exist
+# Create required directories
 settings.sessions_dir.mkdir(exist_ok=True)
+settings.templates_dir.mkdir(exist_ok=True)
 
 class Session(BaseModel):
     id: str
@@ -41,6 +44,9 @@ class Session(BaseModel):
     suggestions: List[str]
     output: str
     progress: int
+
+class CreateSessionRequest(BaseModel):
+    title: str
 
 app = FastAPI(title="Speech Processor API")
 
@@ -76,6 +82,34 @@ async def get_session(session_id: str):
     
     with open(session_path) as f:
         return json.load(f)
+
+@app.post("/sessions", response_model=Session)
+async def create_session(request: CreateSessionRequest):
+    # Generate unique session ID
+    session_id = f"session-{str(uuid.uuid4())[:8]}"
+    
+    # Get current timestamp
+    current_time = datetime.utcnow().isoformat()
+    
+    # Create new session object
+    new_session = {
+        "id": session_id,
+        "title": request.title,
+        "createdAt": current_time,
+        "lastModified": current_time,
+        "status": "in_progress",
+        "input": [],
+        "suggestions": [],
+        "output": "",
+        "progress": 0
+    }
+    
+    # Save session to file
+    session_path = settings.sessions_dir / f"{session_id}.json"
+    with open(session_path, "w") as f:
+        json.dump(new_session, f, indent=2)
+    
+    return new_session
 
 if __name__ == "__main__":
     uvicorn.run(

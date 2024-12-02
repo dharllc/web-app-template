@@ -1,16 +1,27 @@
 // File: frontend/src/App.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import './App.css';
 import ConfigStatus from './components/ConfigStatus';
 import Sidebar from './components/Sidebar';
 import SessionView from './components/SessionView';
 import DarkModeToggle from './components/DarkModeToggle';
 import { ThemeProvider, useTheme, theme } from './theme/ThemeContext';
+import { Session } from './types/session';
 
 const AppContent: React.FC = () => {
   const { isDark } = useTheme();
   const currentTheme = isDark ? theme.dark : theme.light;
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleSessionCreated = useCallback((session: Session) => {
+    setActiveSessionId(session.id);
+    setRefreshTrigger(prev => prev + 1); // Trigger sidebar refresh
+  }, []);
+
+  const handleNewSession = useCallback(() => {
+    setActiveSessionId(null);
+  }, []);
 
   return (
     <div className="App" style={{ 
@@ -32,9 +43,16 @@ const AppContent: React.FC = () => {
         <DarkModeToggle />
       </header>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar onSessionSelect={setActiveSessionId} />
+        <Sidebar 
+          onSessionSelect={setActiveSessionId} 
+          onNewSession={handleNewSession}
+          refreshTrigger={refreshTrigger}
+        />
         <main style={{ flex: 1, overflow: 'auto' }}>
-          <SessionView sessionId={activeSessionId} />
+          <SessionView 
+            sessionId={activeSessionId} 
+            onSessionCreated={handleSessionCreated}
+          />
         </main>
       </div>
       <ConfigStatus />

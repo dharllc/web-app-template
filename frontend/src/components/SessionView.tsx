@@ -5,18 +5,23 @@ import { Session } from '../types/session';
 
 interface SessionViewProps {
   sessionId: string | null;
+  onSessionCreated?: (session: Session) => void;
 }
 
-const SessionView: React.FC<SessionViewProps> = ({ sessionId }) => {
+const SessionView: React.FC<SessionViewProps> = ({ sessionId, onSessionCreated }) => {
   const { isDark } = useTheme();
   const currentTheme = isDark ? theme.dark : theme.light;
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(!sessionId);
+  const [title, setTitle] = useState('');
+  const [isCreateButtonHovered, setIsCreateButtonHovered] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
       if (!sessionId) {
         setSession(null);
+        setIsEditing(true);
         return;
       }
 
@@ -26,6 +31,8 @@ const SessionView: React.FC<SessionViewProps> = ({ sessionId }) => {
         if (!response.ok) throw new Error('Failed to fetch session');
         const data = await response.json();
         setSession(data);
+        setTitle(data.title);
+        setIsEditing(false);
       } catch (error) {
         console.error('Error fetching session:', error);
       } finally {
@@ -36,17 +43,33 @@ const SessionView: React.FC<SessionViewProps> = ({ sessionId }) => {
     fetchSession();
   }, [sessionId]);
 
-  if (!sessionId) {
-    return (
-      <div style={{
-        padding: '40px',
-        textAlign: 'center',
-        color: currentTheme.textSecondary
-      }}>
-        Select a session to view its details
-      </div>
-    );
-  }
+  const createSession = async () => {
+    if (title.trim()) {
+      try {
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/sessions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ title: title.trim() }),
+        });
+
+        if (!response.ok) throw new Error('Failed to create session');
+        const newSession = await response.json();
+        setSession(newSession);
+        setIsEditing(false);
+        onSessionCreated?.(newSession);
+      } catch (error) {
+        console.error('Error creating session:', error);
+      }
+    }
+  };
+
+  const handleCreateSession = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      await createSession();
+    }
+  };
 
   if (loading) {
     return (
@@ -56,6 +79,73 @@ const SessionView: React.FC<SessionViewProps> = ({ sessionId }) => {
         color: currentTheme.textSecondary
       }}>
         Loading session...
+      </div>
+    );
+  }
+
+  if (isEditing) {
+    return (
+      <div style={{
+        padding: '40px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '20px'
+      }}>
+        <h2 style={{ margin: 0, color: currentTheme.text }}>Create New Session</h2>
+        <div style={{
+          width: '100%',
+          maxWidth: '500px',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyPress={handleCreateSession}
+            placeholder="Enter your goal or task"
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              fontSize: '16px',
+              borderRadius: '8px',
+              border: `1px solid ${currentTheme.border}`,
+              background: currentTheme.surface,
+              color: currentTheme.text,
+              outline: 'none',
+            }}
+            autoFocus
+          />
+          <button
+            onClick={createSession}
+            disabled={!title.trim()}
+            onMouseEnter={() => setIsCreateButtonHovered(true)}
+            onMouseLeave={() => setIsCreateButtonHovered(false)}
+            style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: title.trim() 
+                ? (isCreateButtonHovered ? currentTheme.primaryHover : currentTheme.primary)
+                : currentTheme.surface,
+              color: title.trim() ? '#fff' : currentTheme.textSecondary,
+              cursor: title.trim() ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s'
+            }}
+          >
+            Create
+          </button>
+        </div>
+        <p style={{ 
+          color: currentTheme.textSecondary,
+          fontSize: '14px',
+          textAlign: 'center',
+          maxWidth: '500px'
+        }}>
+          Describe what you'd like to accomplish. For example: "Help me write a response to a client email about project delays"
+        </p>
       </div>
     );
   }
