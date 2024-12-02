@@ -20,7 +20,7 @@ const DarkModeToggle: React.FC = () => {
       }}
     >
       {isDark ? '🌙' : '☀️'}
-      <span style={{ fontSize: '0.9rem' }}>{isDark ? 'Dark' : 'Light'}</span>
+      <span style={{ fontSize: '0.9rem' }}>{isDark ? '' : ''}</span>
     </button>
   );
 };
