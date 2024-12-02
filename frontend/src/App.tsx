@@ -1,13 +1,16 @@
-import React from 'react';
+// File: frontend/src/App.tsx
+import React, { useState } from 'react';
 import './App.css';
 import ConfigStatus from './components/ConfigStatus';
 import Sidebar from './components/Sidebar';
+import SessionView from './components/SessionView';
 import DarkModeToggle from './components/DarkModeToggle';
 import { ThemeProvider, useTheme, theme } from './theme/ThemeContext';
 
 const AppContent: React.FC = () => {
   const { isDark } = useTheme();
   const currentTheme = isDark ? theme.dark : theme.light;
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
 
   return (
     <div className="App" style={{ 
@@ -25,13 +28,13 @@ const AppContent: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between'
       }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>App Title</h1>
+        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Speech Processor</h1>
         <DarkModeToggle />
       </header>
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar />
-        <main style={{ flex: 1, padding: '20px' }}>
-          {/* Main content will go here */}
+        <Sidebar onSessionSelect={setActiveSessionId} />
+        <main style={{ flex: 1, overflow: 'auto' }}>
+          <SessionView sessionId={activeSessionId} />
         </main>
       </div>
       <ConfigStatus />
