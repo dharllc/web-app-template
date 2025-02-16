@@ -1,0 +1,89 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches:
+      - dev
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: "1.5.7"
+  DOMAIN_NAME: "yourdomain.com"  # Replace with your domain
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Build Backend
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          zip -r ../backend.zip .
+          
+      - name: Terraform Init
+        working-directory: ./infrastructure/dev
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./infrastructure/dev
+        run: terraform plan -var="domain_name=${{ env.DOMAIN_NAME }}" -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./infrastructure/dev
+        run: terraform apply -auto-approve tfplan
+
+      - name: Get API URL
+        working-directory: ./infrastructure/dev
+        id: terraform_output
+        run: |
+          # Get the frontend environment variables from Terraform output
+          FRONTEND_ENV_VARS=$(terraform output -json frontend_env_vars)
+          echo "frontend_env_vars=$FRONTEND_ENV_VARS" >> $GITHUB_OUTPUT
+
+      - name: Build Frontend
+        env:
+          # Use the Terraform outputs as environment variables during build
+          NEXT_PUBLIC_API_URL: ${{ fromJson(steps.terraform_output.outputs.frontend_env_vars).NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_ENV: ${{ fromJson(steps.terraform_output.outputs.frontend_env_vars).NEXT_PUBLIC_ENV }}
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Deploy Frontend
+        working-directory: ./infrastructure/dev
+        run: |
+          # Get the S3 bucket name from local variables
+          BUCKET_NAME="${DOMAIN_NAME//./-}-dev-frontend"
+          aws s3 sync ../frontend/dist/ s3://$BUCKET_NAME/ --delete
+          
+          # Get CloudFront distribution ID and create invalidation
+          DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+          aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
